@@ -143,6 +143,15 @@ public class PopulatorsConfigUtil {
     List<Material> placeBelowMaterials = parseMaterials(section.getStringList("place_below"));
     boolean airOnly = section.getBoolean("air_only", false);
 
+    List<String> patterns = new ArrayList<>();
+    if (section.isList("patterns")) {
+      patterns.addAll(section.getStringList("patterns"));
+    } else if (section.isString("pattern")) {
+      patterns.add(section.getString("pattern"));
+    } else {
+      patterns.add("blob");
+    }
+
     try {
       CustomBlockMechanic block = NexoBlocks.customBlockMechanic(key);
       FurnitureMechanic furniture = NexoFurniture.furnitureMechanic(key);
@@ -152,11 +161,11 @@ public class PopulatorsConfigUtil {
         if (stringMechanic != null) {
           isTall = stringMechanic.getTall();
         }
-        return new Ore(key, block, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, isTall, veinSize, clusterChance, airOnly);
+        return new Ore(key, block, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, isTall, veinSize, clusterChance, airOnly, patterns);
       } else if (furniture != null) {
-        return new Ore(key, furniture, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, false, veinSize, clusterChance, airOnly);
+        return new Ore(key, furniture, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, false, veinSize, clusterChance, airOnly, patterns);
       } else {
-        return new Ore(key, material, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, false, veinSize, clusterChance, airOnly);
+        return new Ore(key, material, minY, maxY, chance, replaceMaterials, placeOnMaterials, placeBelowMaterials, worlds, worldNames, biomes, iterations, false, veinSize, clusterChance, airOnly, patterns);
       }
     } catch (IllegalArgumentException e) {
       logError("Invalid custom block ID: " + key);

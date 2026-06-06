@@ -111,53 +111,154 @@ public class CustomOrePopulator extends BlockPopulator {
     }
   }
 
+  private int generateBlobVein(WorldInfo worldInfo, Random random, LimitedRegion limitedRegion, PlacementPosition start, Ore ore, int veinSize) {
+    int placedBlocks = 0;
+    Set<String> placed = new HashSet<>();
+    float angle = random.nextFloat() * (float) Math.PI;
+    float sizeScale = (float) veinSize / 8.0F;
+    double startX = start.x() + Math.sin(angle) * sizeScale;
+    double endX = start.x() - Math.sin(angle) * sizeScale;
+    double startZ = start.z() + Math.cos(angle) * sizeScale;
+    double endZ = start.z() - Math.cos(angle) * sizeScale;
+    double startY = start.y() + random.nextInt(3) - 2;
+    double endY = start.y() + random.nextInt(3) - 2;
+    for (int i = 0; i <= veinSize; ++i) {
+      float progress = (float) i / (float) veinSize;
+      double currentX = startX + (endX - startX) * progress;
+      double currentY = startY + (endY - startY) * progress;
+      double currentZ = startZ + (endZ - startZ) * progress;
+      double randomSize = random.nextDouble() * (double) veinSize / 16.0D;
+      double diameterXZ = (Math.sin(Math.PI * progress) + 1.0) * randomSize + 1.0;
+      double diameterY = (Math.sin(Math.PI * progress) + 1.0) * randomSize + 1.0;
+      int minX = (int) Math.floor(currentX - diameterXZ / 2.0D);
+      int minY = (int) Math.floor(currentY - diameterY / 2.0D);
+      int minZ = (int) Math.floor(currentZ - diameterXZ / 2.0D);
+      int maxX = (int) Math.floor(currentX + diameterXZ / 2.0D);
+      int maxY = (int) Math.floor(currentY + diameterY / 2.0D);
+      int maxZ = (int) Math.floor(currentZ + diameterXZ / 2.0D);
+      for (int x = minX; x <= maxX; ++x) {
+        double dx = ((double) x + 0.5D - currentX) / (diameterXZ / 2.0D);
+        if (dx * dx >= 1.0D) continue;
+        for (int y = minY; y <= maxY; ++y) {
+          double dy = ((double) y + 0.5D - currentY) / (diameterY / 2.0D);
+          if (dx * dx + dy * dy >= 1.0D) continue;
+          for (int z = minZ; z <= maxZ; ++z) {
+            double dz = ((double) z + 0.5D - currentZ) / (diameterXZ / 2.0D);
+            if (dx * dx + dy * dy + dz * dz >= 1.0D) continue;
+            if (!limitedRegion.isInRegion(x, y, z)) continue;
+            Material blockType = limitedRegion.getType(x, y, z);
+            Biome biome = limitedRegion.getBiome(x, y, z);
+            PlacementPosition pos = new PlacementPosition(worldInfo, x, y, z, blockType, biome, limitedRegion);
+            if (canReplaceBlock(pos, ore)) {
+              String key = x + "," + y + "," + z;
+              if (!placed.contains(key)) {
+                placeBlock(pos, ore, worldInfo, limitedRegion);
+                placed.add(key);
+                placedBlocks++;
+              }
+            } else if (canPlaceOnBlock(pos, ore, limitedRegion)) {
+              String key = x + "," + (y + 1) + "," + z;
+              if (!placed.contains(key) && limitedRegion.isInRegion(x, y + 1, z)) {
+                PlacementPosition above = pos.above();
+                if (above != null) {
+                  placeBlock(above, ore, worldInfo, limitedRegion);
+                  placed.add(key);
+                  placedBlocks++;
+                }
+              }
+            } else if (canPlaceBelowBlock(pos, ore, limitedRegion)) {
+              String key = x + "," + (y - 1) + "," + z;
+              if (!placed.contains(key) && limitedRegion.isInRegion(x, y - 1, z)) {
+                PlacementPosition below = pos.below();
+                if (below != null) {
+                  placeBlock(below, ore, worldInfo, limitedRegion);
+                  placed.add(key);
+                  placedBlocks++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return placedBlocks;
+  }
+
   private int generateVein(WorldInfo worldInfo, Random random, LimitedRegion limitedRegion, PlacementPosition start, Ore ore, int veinSize) {
+    String pattern = ore.getRandomPattern();
+    if (pattern.equalsIgnoreCase("blob")) {
+      return generateBlobVein(worldInfo, random, limitedRegion, start, ore, veinSize);
+    }
 
     int placedBlocks = 0;
+    List<PlacementPosition> placedPositions = new ArrayList<>();
 
     for (int i = 0; i < veinSize; i++) {
-      PlacementPosition nextPosition = getAdjacentPlacementPosition(start, random, limitedRegion, ore, placedBlocks > 0 && !ore.getPlaceBelow().isEmpty());
+      PlacementPosition currentOrigin = start;
+      if (pattern.equalsIgnoreCase("blob") && !placedPositions.isEmpty()) {
+        currentOrigin = placedPositions.get(random.nextInt(placedPositions.size()));
+      }
+      PlacementPosition nextPosition = getAdjacentPlacementPosition(currentOrigin, random, limitedRegion, ore, pattern, placedBlocks > 0 && !ore.getPlaceBelow().isEmpty());
 
       if (nextPosition == null) break;
 
 //      Bukkit.broadcastMessage(ore.id+" "+limitedRegion.getCenterChunkX()+","+limitedRegion.getCenterChunkZ()+" "+placedBlocks+1);
 //      Bukkit.broadcastMessage("  "+nextPosition.x+" "+nextPosition.y+" "+nextPosition.z);
 
+      PlacementPosition placedPosition = null;
       if (canReplaceBlock(nextPosition, ore)) {
         if(!limitedRegion.isInRegion(new Location(Bukkit.getWorld(worldInfo.getUID()), nextPosition.x(), nextPosition.y(), nextPosition.z())))
           continue;
         placeBlock(nextPosition, ore, worldInfo, limitedRegion);
+        placedPosition = nextPosition;
         placedBlocks++;
       } else if (canPlaceOnBlock(nextPosition, ore, limitedRegion)) {
         if(!limitedRegion.isInRegion(new Location(Bukkit.getWorld(worldInfo.getUID()), nextPosition.x(), nextPosition.y()+1, nextPosition.z())))
           continue;
         placeBlock(nextPosition.above(), ore, worldInfo, limitedRegion);
+        placedPosition = nextPosition.above();
         placedBlocks++;
       } else if( canPlaceBelowBlock(nextPosition, ore, limitedRegion) || placedBlocks > 0 && !ore.getPlaceBelow().isEmpty()) {
         if(!limitedRegion.isInRegion(new Location(Bukkit.getWorld(worldInfo.getUID()), nextPosition.x(), nextPosition.y()-1, nextPosition.z())))
           continue;
         placeBlock(nextPosition.below(), ore, worldInfo, limitedRegion);
+        placedPosition = nextPosition.below();
         placedBlocks++;
       } else {
         break;
       }
 
-      start = nextPosition;
+      if (placedPosition != null) {
+        placedPositions.add(placedPosition);
+        start = nextPosition;
+      }
     }
 
     return placedBlocks;
   }
 
-  private PlacementPosition getAdjacentPlacementPosition(PlacementPosition start, Random random, LimitedRegion limitedRegion, Ore ore, boolean below) {
+  private PlacementPosition getAdjacentPlacementPosition(PlacementPosition start, Random random, LimitedRegion limitedRegion, Ore ore, String pattern, boolean below) {
     Set<String> checkedLocations = new HashSet<>();
     int attempts = 0;
 
     try {
-      for (int i = 0; i < 10 && attempts < 100; i++) {
+      for (int i = 0; i < 20 && attempts < 100; i++) {
         attempts++;
-        int xOffset = random.nextInt(3) - 1;
-        int yOffset = below ? -1 : (random.nextInt(3) - 1);
-        int zOffset = random.nextInt(3) - 1;
+        int xOffset = 0;
+        int yOffset = 0;
+        int zOffset = 0;
+
+        if (pattern.equalsIgnoreCase("vertical")) {
+          yOffset = random.nextBoolean() ? 1 : -1;
+        } else if (pattern.equalsIgnoreCase("horizontal")) {
+          xOffset = random.nextInt(3) - 1;
+          zOffset = random.nextInt(3) - 1;
+        } else {
+          xOffset = random.nextInt(3) - 1;
+          yOffset = below ? -1 : (random.nextInt(3) - 1);
+          zOffset = random.nextInt(3) - 1;
+        }
+        if (xOffset == 0 && yOffset == 0 && zOffset == 0) continue;
 
         int x = start.x() + xOffset;
         int y = start.y() + yOffset;

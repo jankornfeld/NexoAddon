@@ -1,5 +1,5 @@
 # custom_block:            # The unique ID of a Nexo custom block or Nexo furniture item to be placed.
-#   iterations: 50         # Number of placement attempts per chunk. Higher numbers increase the chance of generating the block.
+#   iterations: 50         # Number of placement attempts per chunk. Can also be a range, e.g., "30-50".
 #   worlds: [ world ]      # List of worlds where the custom block can spawn. Example: [ world, world_nether, world_the_end ].
 #   maxY: 50               # Maximum Y-level where the custom block can spawn within the chunk.
 #   minY: 20               # Minimum Y-level where the custom block can spawn within the chunk.
@@ -10,5 +10,6 @@
 #   place_on: [ STONE ]    # Optional: List of block types that the custom block can be placed on. Overrides `replace` if provided.
 #   place_below: [ STONE ] # Optional: List of block types that the custom block can be placed below. Overrides `replace` if provided.
 #   air_only: false        # Optional: Replace Air only (for place_on and place_below).
-#   vein_size: 5           # Optional: Maximum number of blocks in a vein. Set to 0 for single block placement. Default: 0.
+#   vein_size: 5           # Optional: Size of the block vein. Set to 0 for single block placement. Can also be a range, e.g., "3-8". Default: 0.
 #   cluster_chance: 0.8    # Optional: Probability of cluster (vein) formation within the chunk. Defaults to 0.0 for no clustering.
+#   patterns: [ blob ]     # Optional: List of patterns to use for vein generation (blob, snake, vertical, horizontal). If multiple patterns are defined, one will be chosen randomly per vein. Can also specify a single pattern using "pattern: blob". Default: [ blob ].
